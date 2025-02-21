@@ -10,4 +10,4 @@ db.sequelize = sequelize;
 
 db.users = users;
 
-module.exports = db;
+module.exports = db; // es5 문법 export default와 같은 것
