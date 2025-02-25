@@ -11,6 +11,7 @@ const users = sequelize.define("users", {
     loginId: {
         type: DataTypes.STRING,
         allowNull: false,
+        unique: true
     },
     pwd: {
         type: DataTypes.STRING,
@@ -27,8 +28,7 @@ const users = sequelize.define("users", {
     birth: {
         type: DataTypes.STRING,                                                                                                                                                                                                                                                                                      
         allowNull: true
-    },
-    }, {tableName: "users"}
-);
+    }
+});
 
 module.exports = users;
