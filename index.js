@@ -133,31 +133,53 @@ app.post("/api/check-username", async (req, res) => {
 
     // 필수 입력값 확인
     if (!loginId) {
-      return res.status(400).json({message: "아이디를 입력해주세요"});
+      return res.status(400).json({ isValid: false, message: "아이디를 입력헤주세요" });
     }
 
     // 아이디 중복 확인
     const existingUser = await db.users.findOne({where: { loginId }});
     if (existingUser) {
-      return res.status(400).json({message: "이미 사용 중인 아이디입니다."});
+      return res.status(400).json({ isValid: false, message: "이미 사용 중인 아이디입니다." });
     }
 
-    res.status(200).json({message: "사용 가능한 아이디입니다."});
-    
+    res.status(200).json({ isValid: true, message: "사용 가능한 아이디입니다." });
+     
   } catch (error) {
     console.error("아이디 중복 확인 오류:", error);
-    res.status(500).send({message: "서버 에러"});
+    res.status(500).send({ isValid: false, message: "서버 에러" });
   }
 });
 
-// 핸드폰 번호 인증 API
-app.post("/api/verify-phone", async (req, res) => {
+// 이메일 중복 확인
+app.post("/api/check-email", async (res, res) => {
   try {
-    const { phone } = req.body;
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ isValid: false, message: "이메일을 입력해주세요" });
+    }
+
+    const existingEmail = await db.users.findOne({ where: { email }});
+    if (existingEmail) {
+      return res.status(400).json({ isValid: false, message: "이미 사용 중인 이메일입니다."});
+    }
+
+    res.status(200).json({ isValid: true, message: "사용 가능한 이메일입니다." });
+
+  } catch (error) {
+    console.error("이메일 중복 확인 오류:", error);
+    res.status(500).json({ isValid: false, message: "서버 에러"})
+  }
+})
+
+// 핸드폰 번호 인증 API
+app.get("/api/verify-phone", async (req, res) => {
+  try {
+    const { phone } = req.query.body;
 
     // 필수 입력값 확인
     if (!phone) {
-      return res.status(400).json({message: "핸드폰 번호를 입력해주세요."});
+      return res.status(400).json({isValid: false, message: "핸드폰 번호를 입력해주세요."});
     }
 
     // 인증번호 생성
@@ -172,7 +194,7 @@ app.post("/api/verify-phone", async (req, res) => {
     global.verificationCode = global.verificationCode || {};
     global.verificationCode[phone] = verificationCode;
 
-    res.status(200).json({message: "인증번호가 전송되었습니다."});
+    res.status(200).json({isValid: true});
 
   } catch (error) {
     console.log("핸드폰 번호 인증 오류:", error);
@@ -181,7 +203,7 @@ app.post("/api/verify-phone", async (req, res) => {
 });
 
 // 인증번호 확인 API
-app.post("/api/confirm-verification-code", async (req, res) => {
+app.get("/api/confirm-verification-code", async (req, res) => {
   try {
     const { phone, verificationCode } = req.body;
 
