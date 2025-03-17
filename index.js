@@ -151,7 +151,7 @@ app.post("/api/check-username", async (req, res) => {
 });
 
 // 이메일 중복 확인
-app.post("/api/check-email", async (res, res) => {
+app.post("/api/check-email", async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -175,7 +175,7 @@ app.post("/api/check-email", async (res, res) => {
 // 핸드폰 번호 인증 API
 app.get("/api/verify-phone", async (req, res) => {
   try {
-    const { phone } = req.query.body;
+    const { phone } = req.body;
 
     // 필수 입력값 확인
     if (!phone) {
@@ -191,8 +191,8 @@ app.get("/api/verify-phone", async (req, res) => {
 
     // 인증번호 저장 (예: DB 또는 메모리)
     // 여기서는 간단히 메모리에 저장
-    global.verificationCode = global.verificationCode || {};
-    global.verificationCode[phone] = verificationCode;
+    global.verificationCodes = global.verificationCodes || {};
+    global.verificationCodes[phone] = verificationCode;
 
     res.status(200).json({isValid: true});
 
@@ -203,7 +203,7 @@ app.get("/api/verify-phone", async (req, res) => {
 });
 
 // 인증번호 확인 API
-app.get("/api/confirm-verification-code", async (req, res) => {
+app.post("/api/confirm-verification-code", async (req, res) => {
   try {
     const { phone, verificationCode } = req.body;
 
