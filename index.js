@@ -4,10 +4,11 @@ const sequelize = require("./config/Database");
 const db = require("./models");
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid'); // 인증번호 생성을 위한 uuid 패키지지
+const { v4: uuidv4 } = require('uuid'); // 인증번호 생성을 위한 uuid 패키지
+require('dotenv').config(); // 환경 변수 사용
 
 const app = express();
-const port = 8000;
+const port = process.env.PORT || 8000;
 
 /** CORS 설정 */
 const corsOptions = {
@@ -70,10 +71,6 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`서버 실행 중! http://localhost:${port}`);
-});
-
 const updatePasswords = async () => {
   try {
     const users = await db.users.findAll();
@@ -133,7 +130,7 @@ app.post("/api/check-username", async (req, res) => {
 
     // 필수 입력값 확인
     if (!loginId) {
-      return res.status(400).json({ isValid: false, message: "아이디를 입력헤주세요" });
+      return res.status(400).json({ isValid: false, message: "아이디를 입력해주세요" });
     }
 
     // 아이디 중복 확인
@@ -173,7 +170,7 @@ app.post("/api/check-email", async (req, res) => {
 })
 
 // 핸드폰 번호 인증 API
-app.get("/api/verify-phone", async (req, res) => {
+app.post("/api/verify-phone", async (req, res) => {
   try {
     const { phone } = req.body;
 
@@ -191,10 +188,9 @@ app.get("/api/verify-phone", async (req, res) => {
 
     // 인증번호 저장 (예: DB 또는 메모리)
     // 여기서는 간단히 메모리에 저장
-    global.verificationCodes = global.verificationCodes || {};
-    global.verificationCodes[phone] = verificationCode;
+    await db.verificationCodes.create({ phone, code: verificationCode });
 
-    res.status(200).json({isValid: true});
+    res.status(200).json({isValid: true, message: "인증번호가 전송되었습니다."});
 
   } catch (error) {
     console.log("핸드폰 번호 인증 오류:", error);
@@ -213,8 +209,9 @@ app.post("/api/confirm-verification-code", async (req, res) => {
     }
 
     // 인증번호 확인
-    if (global.verificationCodes && global.verificationCodes[phone] === verificationCode) {
-      delete global.verificationCodes[phone]; // 인증번호 사용 후 삭제
+    const record = await db.verificationCodes.findOne({ where: { phone, code: verificationCode } });
+    if (record) {
+      await db.verificationCodes.destroy({ where: { phone } }); // 인증번호 사용 후 삭제
       res.status(200).json({message: "인증 성공!"});
     } else {
       res.status(400).json({message: "인증번호가 올바르지 않습니다"});
@@ -223,4 +220,8 @@ app.post("/api/confirm-verification-code", async (req, res) => {
     console.error("인증번호 확인 오류:", error);
     res.status(500).send({message: "서버 에러"});
   }
+});
+
+app.listen(port, () => {
+  console.log(`서버가 http://localhost:${port} 에서 실행 중입니다.`);
 });
