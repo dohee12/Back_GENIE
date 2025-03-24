@@ -190,7 +190,7 @@ app.post("/api/verify-phone", async (req, res) => {
     // 여기서는 간단히 메모리에 저장
     await db.verificationCodes.create({ phone, code: verificationCode });
 
-    res.status(200).json({isValid: true, message: "인증번호가 전송되었습니다."});
+    res.status(200).json({isValid: true, message: "인증번호가 전송되었습니다.", verificationCode});
 
   } catch (error) {
     console.log("핸드폰 번호 인증 오류:", error);
@@ -219,6 +219,98 @@ app.post("/api/confirm-verification-code", async (req, res) => {
   } catch (error) {
     console.error("인증번호 확인 오류:", error);
     res.status(500).send({message: "서버 에러"});
+  }
+});
+
+// 아이디 찾기 API
+app.post("/api/find-username", async (req, res) => {
+  try {
+    const { birthdate, phone } = req.body;
+
+    // 필수 입력값 확인
+    if (!birthdate || !phone) {
+      return res.status(400).json({message: "생년월일과 핸드폰 번호를 입력해주세요."});
+    }
+
+    // 생년월일과 핸드폰 번호로 사용자 조회
+    const user = await db.users.findOne({
+      where: { birthdate, phone }
+    });
+
+    if (!user) {
+      return res.status(400).json({message: "사용자를 찾을 수 없습니다."});
+    }
+
+    res.status(200).json({message: "아이디 찾기 성공!", loginId: user.loginId});
+  
+  } catch (error) {
+    console.log("아이디 찾기 오류: ", error);
+    res.status(500).send({message: "서버 에러"});
+  }
+});
+
+// 비밀번호 재설정 요청 API
+app.post("/api/request-password-reset", async (req, res) => {
+  try {
+    const { loginId, birthdate, phone } = req.body;
+
+    // 필수 입력값 확인
+    if (!loginId || !birthdate || !phone) {
+      return res.status(400).json({ message: "아이디, 생년월일, 핸드폰 번호를 입력해주세요." });
+    }
+
+    // 아이디, 생년월일, 핸드폰 번호로 사용자 조회
+    const user = await db.users.findOne({
+      where: { loginId, birthdate, phone }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+    }
+
+    // 인증번호 생성 및 전송
+    const verificationCode = uuidv4().split('-')[0];
+    await db.verificationCodes.create({ phone: user.phone, code: verificationCode });
+
+    // 실제로는 이메일 또는 SMS API를 사용하여 전송
+    console.log(`인증번호: ${verificationCode}`);
+
+    res.status(200).json({ message: "인증번호가 전송되었습니다." });
+
+  } catch (error) {
+    console.error("비밀번호 재설정 요청 오류:", error);
+    res.status(500).send({ message: "서버 에러" });
+  }
+});
+
+// 비밀번호 재설정 API
+app.post("/api/reset-password", async (req, res) => {
+  try {
+    const { phone, verificationCode, newPassword } = req.body;
+
+    // 필수 입력값 확인
+    if (!phone || !verificationCode || !newPassword) {
+      return res.status(400).json({ message: "모든 필드를 입력해주세요." });
+    }
+
+    // 인증번호 확인
+    const record = await db.verificationCodes.findOne({ where: { phone, code: verificationCode } });
+    if (!record) {
+      return res.status(400).json({ message: "인증번호가 올바르지 않습니다." });
+    }
+
+    // 비밀번호 해싱 및 업데이트
+    const hashedPwd = await bcrypt.hash(newPassword, 10);
+    await db.users.update({ pwd: hashedPwd }, { where: { phone } });
+
+    // 인증번호 사용 후 삭제
+    await db.verificationCodes.destroy({ where: { phone } });
+
+    res.status(200).json({ message: "비밀번호 재설정 성공!" });
+
+  } catch (error) {
+    console.error("비밀번호 재설정 오류:", error);
+    res.status(500).send({ message: "서버 에러" });
   }
 });
 
